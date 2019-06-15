@@ -103,7 +103,7 @@ class Window:
         self.oldstate = None
         self.oldprog = -1
         self.stime = 0
-        self.tme = 0
+        self.tme = -1
         self.thread = EncryptionThread("temp","temp","temp",lsize=1)
 
     def init(self):
@@ -157,7 +157,7 @@ class Window:
             if target == progress:
                 percent = 100
                 speed = 0
-                tme = 0
+                tme = -1
                 self.tme = tme
             else:
                 speed = progress/elapsed  # Speed = distance over time
