@@ -156,9 +156,22 @@ class VaultModes(enum.Enum):
     ESTIMATING = 6
 
 class Vault():
-    BLOCKSIZE = (1024**2)*1 #1MiB
-    def __init__(self,spath,epath,lsize=2):
+    DEFAULT_BLOCKSIZE = (1024**2)*16  # 16MiB
+    DEFAULT_SWITCHTHRESHOLD = (1024**2)  # When to switch to fastencrypt.
+    def __init__(self,spath,epath,lsize=2,blocksize=None,switchthreshold=None):
+        if blocksize == None:
+            self.BLOCKSIZE = self.DEFAULT_BLOCKSIZE
+        else:
+            self.BLOCKSIZE = blocksize
+        if switchthreshold == None:
+            self.SWITCHTHRESHOLD = self.DEFAULT_SWITCHTHRESHOLD
+        else:
+            self.SWITCHTHRESHOLD = switchthreshold
         self.e = Encryptor(elsize=lsize)
+        if lsize != 1:
+            self.se = Encryptor(elsize=1)  # For large files
+        else:
+            self.se = self.e
         self.fe = FileEncryptor(lsize=1)  # The file encryptor isn't used to encrypt files therefore speed up creation.
         self.sp = spath #Store path
         self.sp_bp = os.path.join(spath,"blocks") #Block folder
@@ -181,18 +194,25 @@ class Vault():
             result = result[1:]
         return result
     def store(self,key):
-        mdata = {"LetterSize":self.e.ENCRYPTION_LETTER_SIZE,"totalblocks": 0, "blockhashes":{}, "files":{}, "dirs":[]}
+        mdata = {"LetterSize":self.e.ENCRYPTION_LETTER_SIZE,"totalblocks": 0, "blockhashes":{},
+                 "switchthreshold": self.SWITCHTHRESHOLD, "files":{}, "dirs":[]}
         blockno = -1
         print("Estimating...")
         self.state = VaultModes.ESTIMATING
         total = 0
+        sizes = {}
         for root,dirs,files in os.walk(self.ep):
             for f in files:
                 with open(os.path.join(root,f),"rb") as fl:
-                    data = fl.read(self.BLOCKSIZE)
+                    tby = 0
+                    data = fl.read(1024**2)
                     while len(data) > 0:
+                        tby += 1024**2
+                        data = fl.read(1024**2)
+                    sizes[f] = tby
+                    total += tby//self.BLOCKSIZE
+                    if (tby%self.BLOCKSIZE) > 0:
                         total += 1
-                        data = fl.read(self.BLOCKSIZE)
         print("Estimated size: {} blocks".format(total))
         print("Encrypting...")
         self.state = VaultModes.STORING
@@ -200,26 +220,32 @@ class Vault():
         self.target = total
         for root,dirs,files in os.walk(self.ep):
             for d in dirs:
-                print("Directory: {}".format(d))
+                #print("Directory: {}".format(d))
                 dp = os.path.join(root,d)
                 rdp = self.getRelativePath(dp,self.ep)
                 rdp = self.e.encryptString(rdp.encode("utf-8"),key)
                 mdata["dirs"].append(rdp)
             for fn in files:
-                print("File: {}".format(fn))
+                #print("File: {}".format(fn))
                 fp = os.path.join(root,fn)
-                rfp = self.getRelativePath(fp,self.ep)
-                rfp = self.e.encryptString(rfp.encode("utf-8"),key)
+                orfp = self.getRelativePath(fp,self.ep)
+                rfp = self.e.encryptString(orfp.encode("utf-8"),key)
                 mdata["files"][rfp] = []
                 with open(fp,"rb") as f:
-                    buf = f.read(self.BLOCKSIZE)
+                    if sizes[fn] < self.BLOCKSIZE:
+                        buf = f.read()
+                    else:
+                        buf = f.read(self.BLOCKSIZE)
                     while len(buf) > 0:
                         blockno += 1
                         mdata["totalblocks"] += 1
-                        print("  Block: {}".format(blockno))
+                        #print("  Block: {}".format(blockno))
                         mdata["files"][rfp].append(blockno)
 
-                        buf = self.e.encryptString(buf,key).encode("utf-8")
+                        if len(buf) <= self.SWITCHTHRESHOLD:
+                            buf = self.e.encryptString(buf,key).encode("utf-8")
+                        else:
+                            buf = self.se.encryptString(buf,key).encode("utf-8")  # Encrypt with the 1letter one.
                         
                         hasher = hashlib.sha512()
                         hasher.update(buf)
@@ -252,10 +278,12 @@ class Vault():
         self.state = VaultModes.EXTRACTING
         self.progress = 0
         self.target = len(mdata["dirs"]) + mdata["totalblocks"]
+        self.ost = self.SWITCHTHRESHOLD
+        self.SWITCHTHRESHOLD = mdata["switchthreshold"]
         print("Creating directories...")
         for d in mdata["dirs"]:
             d = self.e.decryptString(d.encode("utf-8"),key).decode("utf-8")
-            print("Directory: {}".format(d))
+            #print("Directory: {}".format(d))
             if not os.path.exists(os.path.join(self.ep, d)):
                 os.mkdir(os.path.join(self.ep, d))
             else:
@@ -265,33 +293,38 @@ class Vault():
         for f in mdata["files"].keys():
             f = f
             df = self.e.decryptString(f.encode("utf-8"),key).decode("utf-8")
-            print("File: {}".format(df))
+            #print("File: {}".format(df))
             open(os.path.join(self.ep,df),"wb").close()
             blks = mdata["files"][f]
             for bn in blks:
-                print("  Block: {}".format(bn))
+                #print("  Block: {}".format(bn))
                 with open(os.path.join(self.sp_bp,"block" + str(bn)),"rb") as bf:
                     buf = bf.read()
-                buf = self.e.decryptString(buf,key)
+                if len(buf) <= self.SWITCHTHRESHOLD:
+                    buf = self.e.decryptString(buf,key)
+                else:
+                    buf = self.se.decryptString(buf,key)
                 with open(os.path.join(self.ep,df),"ab") as ef:
                     ef.write(buf)
                 self.progress += 1
         self.state = VaultModes.DOINGNOTHING
+        self.SWITCHTHRESHOLD = self.ost
+        del self.ost
     def wipeExtracted(self):
         self.state = VaultModes.WIPINGFILES
         self.progress = 0
         self.target = 0
         for root,dirs,files in os.walk(self.ep, topdown=False):
             for f in files:
-                print(f)
+                #print(f)
                 self.fe.wipeFile(os.path.join(root,f))
         self.state = VaultModes.WIPINGDIRS
         for root,dirs,files in os.walk(self.ep, topdown=False):
             for d in dirs:
-                print(d)
+                #print(d)
                 os.rmdir(os.path.join(root,d))
             for f in files:
-                print(f)
+                #print(f)
                 self.fe.wipeFile(os.path.join(root,f))
         self.state = VaultModes.DOINGNOTHING
     def checkIntegrity(self):
@@ -359,6 +392,20 @@ def benchmark_esize(file="D:/Personal/About Me.pptx",sizes=[1,2,3],key="ASDF"):
     print("Loading data...")
     with open(file,"rb") as f:
         data = f.read()
+    encryptors = {}
+    for s in sizes:
+        print("Generating... size={}".format(s))
+        encryptors[s] = Encryptor(s)
+    for s in encryptors.keys():
+        print("Encrypting... size={}".format(s))
+        stime = time.time()
+        encryptors[s].encryptString(data,key)
+        etime = time.time()
+        print("Encrypted. Time: {}s".format(round(etime-stime,2)))
+
+def benchmark_esize_amnt(meg=1,sizes=[1,2,3],key="ASDF"):
+    print("Generating data...")
+    data = b"0"*((1024**2)*meg)
     encryptors = {}
     for s in sizes:
         print("Generating... size={}".format(s))

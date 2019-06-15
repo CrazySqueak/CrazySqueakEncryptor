@@ -13,8 +13,11 @@ def loadSettings():
     try:
         with open("settings","rb") as f:
             settings = pickle.load(f)
+        settings["defaultroot"]
+        settings["blocksize"]
+        settings["switchthreshold"]
     except:
-        settings = {"defaultroot": "~"}
+        settings = {"defaultroot": "~","blocksize":4,"switchthreshold":1024}
     return settings
 def saveSettings(settings):
     with open("settings","wb") as f:
@@ -33,13 +36,20 @@ class ThreadedEncryptionModes(Enum):
     BACKUP = 3
 
 class EncryptionThread(threading.Thread):
-    def __init__(self,spath,epath,key,mode=ThreadedEncryptionModes.STORE,lsize=2):
+    def __init__(self,spath,epath,key,mode=ThreadedEncryptionModes.STORE,lsize=2,blocksize=None,switchthreshold=None):
+        """spath - Store path. epath - Extracted path. mode - mode. lsize - letter size.
+        blocksize - Block Size in MiB. switchthreshold - FastEncrypt threshold in KiB."""
         threading.Thread.__init__(self)
         self.spath = spath
         self.epath = epath
         self.key = key
         self.mode = mode
         self.lsize = lsize
+        self.blocksize, self.switchthreshold = None, None
+        if blocksize is not None:
+            self.blocksize = blocksize*(1024**2)
+        if switchthreshold is not None:
+            self.switchthreshold = switchthreshold*(1024**1)
         self.callback = None
         self.errorback = None
         self.vault = elib.Vault(spath,epath,lsize=1) # Temporary vault for state checks.
@@ -60,7 +70,8 @@ class EncryptionThread(threading.Thread):
                 else:
                     print("Overriding letter size due to lack of specification. New: 1")
                     self.lsize = 1
-        vault = elib.Vault(self.spath,self.epath,lsize=self.lsize)  # Generate the real vault
+        vault = elib.Vault(self.spath,self.epath,lsize=self.lsize,blocksize=self.blocksize,
+                           switchthreshold=self.switchthreshold)  # Generate the real vault
         self.vault = vault  # Allow others to access it.
         try:
             if self.mode == ThreadedEncryptionModes.STORE:
@@ -90,7 +101,9 @@ class Window:
         self.k = None
         self.pleasewait = False
         self.oldstate = None
+        self.oldprog = -1
         self.stime = 0
+        self.tme = 0
         self.thread = EncryptionThread("temp","temp","temp",lsize=1)
 
     def init(self):
@@ -134,21 +147,31 @@ class Window:
         if status != self.oldstate:
             self.stime = time.time()
             self.oldstate = status
-        elapsed = time.time()-self.stime
-        delapsed = round(elapsed,0)
-        if target == progress:
-            percent = 100
-            speed = 0
-            tme = 0
-        else:
-            percent = round((progress/target)*100,2)
-            speed = progress/elapsed  # Speed = distance over time
-            if speed != 0:
-                tme = target/speed  # Time = distance over speed, provided speed isn't equal to zero.
+            self.oldprog = -1
+        elapsed = time.time() - self.stime
+        delapsed = round(elapsed, 0)
+        if target > 0: percent = round((progress / target) * 100, 2)
+        else: percent = 100
+        if progress != self.oldprog:
+            self.oldprog = progress
+            if target == progress:
+                percent = 100
+                speed = 0
+                tme = 0
+                self.tme = tme
             else:
-                tme = -1  # You're not getting anywhere if you're not moving.
+                speed = progress/elapsed  # Speed = distance over time
+                if speed != 0:
+                    tme = target/speed  # Time = distance over speed, provided speed isn't equal to zero.
+                else:
+                    tme = -1  # You're not getting anywhere if you're not moving.
+                self.tme = tme
+        else:
+            if self.tme > 0:
+                self.tme -= 0.1
+            tme = self.tme
         if tme == -1:
-            dtme = "Unknown."
+                dtme = "Unknown."
         elif tme < 60:  # Measurable in seconds.
             dtme = "{} seconds".format(int(tme))
         elif tme < 60*10:  # Measurable in minutes and seconds.
@@ -160,7 +183,7 @@ class Window:
             dtme = "About {} minutes.".format(m)
         elif tme < (60*60)*10:  # Measurable in hours and minutes.
             h = tme//(60*60)
-            m = int(tme%(60*60))
+            m = int((tme%(60*60))//60)
             dtme = "About {} hours, and {} minutes.".format(h,m)
         elif tme < (60*60)*24:  # Less than a day
             h = tme//(60*60)
@@ -202,7 +225,8 @@ class Window:
             settings["defaultroot"] += s
         saveSettings(settings)
 
-        self.thread = EncryptionThread(v,e,k,ThreadedEncryptionModes.EXTRACT,lsize=DEFAULTLETTERSIZE)
+        self.thread = EncryptionThread(v,e,k,ThreadedEncryptionModes.EXTRACT,lsize=DEFAULTLETTERSIZE,
+                                       blocksize=settings["blocksize"],switchthreshold=settings["switchthreshold"])
         self.thread.setCallback(self.ResetFrame)
         self.thread.setErrorCallback(self.ErrorCallback)
         self.thread.start()
@@ -226,7 +250,8 @@ class Window:
 
         v, e = self.thread.spath, self.thread.epath
         k = self.k
-        self.thread = EncryptionThread(v, e, k, ThreadedEncryptionModes.STORE,lsize=DEFAULTLETTERSIZE)
+        self.thread = EncryptionThread(v, e, k, ThreadedEncryptionModes.STORE,lsize=DEFAULTLETTERSIZE,
+                                       blocksize=settings["blocksize"],switchthreshold=settings["switchthreshold"])
         self.thread.setCallback(self.ResetOpenFrame)
         self.thread.setErrorCallback(self.ErrorCallback)
         self.thread.start()
@@ -247,7 +272,8 @@ class Window:
         self.ResetPleaseWait()
 
         self.k = k
-        self.thread = EncryptionThread(v,e,k,ThreadedEncryptionModes.BACKUP,lsize=DEFAULTLETTERSIZE)
+        self.thread = EncryptionThread(v,e,k,ThreadedEncryptionModes.BACKUP,lsize=DEFAULTLETTERSIZE,
+                                       blocksize=settings["blocksize"],switchthreshold=settings["switchthreshold"])
         self.thread.setCallback(self.ResetFrame)
         self.thread.setErrorCallback(self.ErrorCallback)
         self.thread.start()
@@ -315,7 +341,20 @@ class OpenFrame(tkinter.Frame):
         butS = tkinter.Button(self,text="Open",command=win.openVault)
         butN = tkinter.Button(self,text="New Vault",command=win.newVault)
 
+        advancedoptions = tkinter.Label(self,text='''\nADVANCED OPTIONS BELOW. BE CAREFUL.
+"Click 'Apply' to apply these options, clicking 'New Vault' or 'Open' will not save them.''')
+        alab1 = tkinter.Label(self,text="Block size (MiB): ")
+        ades1 = tkinter.Label(self,
+            text="Higher values equal larger blocks, lower values equal less memory usage and faster encryption.[Int]")
+        alab2 = tkinter.Label(self,text="Switch Threshold (KiB): ")
+        ades2 = tkinter.Label(self,text="Set this to the value returned by devtools.get_lvs3_threshold_KiB(). [Int]")
+        aent1 = tkinter.Entry(self,width=50)
+        aent2 = tkinter.Entry(self,width=50)
+        apbut = tkinter.Button(self,text="Apply Advanced Options",command=self.applyadvanced)
+
         ent2.insert(tkinter.END,os.path.join(settings["defaultroot"],"CsEcTemp{}".format(random.randint(1000,9999))))
+        aent1.insert(tkinter.END,str(settings["blocksize"]))
+        aent2.insert(tkinter.END,str(settings["switchthreshold"]))
 
         lab1.grid(column=1,row=1)
         lab2.grid(column=1,row=2)
@@ -328,7 +367,16 @@ class OpenFrame(tkinter.Frame):
         butS.grid(column=3,row=4)
         butN.grid(column=1,row=4)
 
-        self.ent1, self.ent2, self.ent3 = ent1, ent2, ent3
+        advancedoptions.grid(column=1,row=5,columnspan=3,rowspan=3)
+        alab1.grid(column=1,row=8)
+        alab2.grid(column=1,row=10)
+        aent1.grid(column=2,row=8)
+        aent2.grid(column=2,row=10)
+        ades1.grid(column=1,row=9,columnspan=3)
+        ades2.grid(column=1,row=11,columnspan=3)
+        apbut.grid(column=1,row=12,columnspan=3)
+
+        self.ent1, self.ent2, self.ent3, self.aent1, self.aent2 = ent1, ent2, ent3, aent1, aent2
 
     def browse1(self):
         path = fd.askdirectory(parent=self)
@@ -340,6 +388,16 @@ class OpenFrame(tkinter.Frame):
         if path:
             self.ent2.delete(0,tkinter.END)
             self.ent2.insert(0,path)
+
+    def applyadvanced(self):
+        try:
+            settings["blocksize"] = int(self.aent1.get())
+            settings["switchthreshold"] = int(self.aent2.get())
+            saveSettings(settings)
+            mb.showinfo("Apply","Advanced options applied!")
+        except:
+            mb.showerror("Apply","Error applying options. Make sure they are the correct format and try again.")
+            raise sys.exc_info()[1]
 
 win = Window()
 win.init()
