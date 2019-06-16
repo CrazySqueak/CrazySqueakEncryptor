@@ -137,6 +137,9 @@ class Window:
         except elib.IntegrityError:
             mb.showerror("Error", "Vault is corrupt. Please check the console for more details.")
             print(err[0], err[1])
+        except PermissionError:
+            mb.showerror("Permission Denied", "Permission Denied, but don't worry, Windows 10 is being an idiot for me as well.")
+            raise
         finally:
             self.ResetOpenFrame()
 

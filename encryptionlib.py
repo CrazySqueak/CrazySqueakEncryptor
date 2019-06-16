@@ -144,11 +144,27 @@ class FileEncryptor():
         #Add 10% extra padding.
         l += int(l/10)
         #Wipe file
-        with open(file,"wb") as f:
-            for i in range(int(l/(1024**2))+1): #Every MegaByte
-                f.write(bytes([random.randint(0,255)]*(1024**2)))
+        write = True
+        errcount = 0
+        while write:
+            try:
+                with open(file,"wb") as f:
+                    for i in range(int(l/(1024**2))+1): #Every MegaByte
+                        f.write(bytes([random.randint(0,255)]*(1024**2)))
+                write = False
+            except PermissionError:
+                errcount += 1
+                if errcount == 3:
+                    print(f"File not wiped due to permission error: {file}")
+                    write = False
         #Remove file from disk
-        os.remove(file)
+        errcount = 0
+        while os.path.exists(file):
+            try:
+                os.remove(file)
+            except PermissionError:
+                errcount += 1
+                if errcount == 3: raise
 
 class VaultModes(enum.Enum):
     DOINGNOTHING = 0
@@ -268,9 +284,15 @@ class Vault():
                             if buf == otherblk:
                                 write = False
 
-                        if write:
-                            with open(os.path.join(self.sp_bp,"block{}".format(blockno)),"wb") as bf:
-                                bf.write(buf)
+                        errcount = 0
+                        while write:
+                            try:
+                                with open(os.path.join(self.sp_bp,"block{}".format(blockno)),"wb") as bf:
+                                    bf.write(buf)
+                                write = False
+                            except PermissionError:  # The blocks are also important.
+                                errcount += 1
+                                if errcount == 3: raise
                         self.progress += 1
                         buf = f.read(self.BLOCKSIZE)
         print("Cleaning up excess blocks...")
@@ -286,8 +308,16 @@ class Vault():
                 self.fe.wipeFile(filename)
             self.progress += 1
         print("Writing metadata...")
-        with open(os.path.join(self.sp,"MANIFEST"),"wb") as m:
-            pickle.dump(mdata,m)
+        write = True
+        errcount = 0
+        while write:
+            try:
+                with open(os.path.join(self.sp,"MANIFEST"),"wb") as m:
+                    pickle.dump(mdata,m)
+                write = False
+            except PermissionError:  # The MANIFEST is kinda an important file.
+                errcount += 1
+                if errcount == 3: raise
         self.state = VaultModes.DOINGNOTHING
         return mdata
     def extract(self,key):
@@ -306,15 +336,32 @@ class Vault():
             d = self.e.decryptString(d.encode("utf-8"),key).decode("utf-8")
             self.statusmessage = d
             #print("Directory: {}".format(d))
-            if not os.path.exists(os.path.join(self.ep, d)):
-                os.mkdir(os.path.join(self.ep, d))
+            errcount = 0
+            while not os.path.exists(os.path.join(self.ep, d)):
+                try:
+                    os.mkdir(os.path.join(self.ep, d))
+                except PermissionError:
+                    errcount += 1
+                    if errcount == 3:
+                        print(f"Ignored due to permission errors: {d}")
+                        break
             self.progress += 1
         print("Extracting files...")
         for f in mdata["files"].keys():
             df = self.e.decryptString(f.encode("utf-8"),key).decode("utf-8")
             #print("File: {}".format(df))
             self.statusmessage = df
-            open(os.path.join(self.ep,df),"wb").close()
+            write = True
+            errcount = 0
+            while write:
+                try:
+                    open(os.path.join(self.ep,df),"wb").close()
+                    write = False
+                except PermissionError:
+                    errcount += 1
+                    if errcount == 3:
+                        print(f"Ignored due to permission errors: {df}")
+                        write = False
             blks = mdata["files"][f]
             for bn in blks:
                 #print("  Block: {}".format(bn))
@@ -324,8 +371,16 @@ class Vault():
                     buf = self.e.decryptString(buf,key)
                 else:
                     buf = self.se.decryptString(buf,key)
-                with open(os.path.join(self.ep,df),"ab") as ef:
-                    ef.write(buf)
+                write = True
+                errcount = 0
+                while write:
+                    try:
+                        with open(os.path.join(self.ep,df),"ab") as ef:
+                            ef.write(buf)
+                        write = False
+                    except PermissionError:
+                        errcount += 1
+                        if errcount == 3: raise  # This should never be reached, unless Windows 10 is feeling very angry
                 self.progress += 1
         self.state = VaultModes.DOINGNOTHING
         self.SWITCHTHRESHOLD = self.ost
@@ -344,7 +399,13 @@ class Vault():
             for d in dirs:
                 #print(d)
                 self.statusmessage = d
-                os.rmdir(os.path.join(root,d))
+                errcount = 0
+                while os.path.exists(os.path.join(root,d)):
+                    try:
+                        os.rmdir(os.path.join(root,d))
+                    except PermissionError:
+                        errcount += 1
+                        if errcount == 3: raise
             for f in files:
                 #print(f)
                 self.statusmessage = f
