@@ -8,7 +8,7 @@
 # loss, or other problems, caused by improper operation of the program, or by failure of the program. You use it at your
 # own risk.
 
-import tkinter,os,random,sys,pickle,threading,time
+import tkinter,os,random,sys,pickle,threading,time,signal
 from enum import Enum
 
 os.chdir(os.path.dirname(sys.argv[0]))  # Thanks to StackOverflow for this amazing solution.
@@ -109,6 +109,7 @@ class Window:
         self.stime = 0
         self.tme = -1
         self.thread = EncryptionThread("temp","temp","temp",lsize=1)
+        self.uncaughtfault = True
 
     def init(self):
         self.frame = OpenFrame(self.window)
@@ -139,6 +140,11 @@ class Window:
             print(err[0], err[1])
         except PermissionError:
             mb.showerror("Permission Denied", "Permission Denied, but don't worry, Windows 10 is being an idiot for me as well.")
+            raise
+        except Exception:
+            self.pleasewait = False
+            mb.showerror("Fatal Error","An uncaught exception has occurred in the encryption process.")
+            self.uncaughtfault = False
             raise
         finally:
             self.ResetOpenFrame()
@@ -414,6 +420,16 @@ class OpenFrame(tkinter.Frame):
             raise sys.exc_info()[1]
 
 win = Window()
-win.init()
-win.mainloop()
-sys.exit(0)
+try:
+    win.init()
+    win.mainloop()
+except Exception:
+    if win.uncaughtfault:
+        mb.showerror("Fatal Error","An uncaught exception has occurred somewhere in the UI handling code.")
+    print(f"ERROR: {sys.exc_info()}")
+    raise
+else:
+    os.kill(os.getpid(), signal.SIGTERM)
+finally:
+    input("Press ENTER to exit.")
+    os.kill(os.getpid(),signal.SIGTERM)
