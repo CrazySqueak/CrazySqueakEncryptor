@@ -158,9 +158,10 @@ class VaultModes(enum.Enum):
     WIPINGFILES = 4
     WIPINGDIRS = 5
     ESTIMATING = 6
+    CLEANING = 7
 
 class Vault():
-    DEFAULT_BLOCKSIZE = (1024**2)*16  # 16MiB
+    DEFAULT_BLOCKSIZE = (1024**1)*512  # 512KiB
     DEFAULT_SWITCHTHRESHOLD = (1024**2)  # When to switch to fastencrypt.
     def __init__(self,spath,epath,lsize=2,blocksize=None,switchthreshold=None):
         if blocksize == None:
@@ -272,6 +273,18 @@ class Vault():
                                 bf.write(buf)
                         self.progress += 1
                         buf = f.read(self.BLOCKSIZE)
+        print("Cleaning up excess blocks...")
+        self.progress = 0
+        fns = glob.glob(os.path.join(self.sp_bp,"*"))
+        self.target = len(fns)
+        self.state = VaultModes.CLEANING
+        self.statusmessage = ""
+        for filename in fns:
+            if "block" in filename and int(filename.replace(os.path.join(self.sp_bp,"block"),"")) < mdata["totalblocks"]:
+                pass
+            else:
+                self.fe.wipeFile(filename)
+            self.progress += 1
         print("Writing metadata...")
         with open(os.path.join(self.sp,"MANIFEST"),"wb") as m:
             pickle.dump(mdata,m)

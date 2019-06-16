@@ -21,7 +21,7 @@ def loadSettings():
         settings["blocksize"]
         settings["switchthreshold"]
     except:
-        settings = {"defaultroot": "~","blocksize":1,"switchthreshold":1024}
+        settings = {"defaultroot": "~","blocksize":1016,"switchthreshold":1024}
     return settings
 def saveSettings(settings):
     with open("settings","wb") as f:
@@ -51,7 +51,7 @@ class EncryptionThread(threading.Thread):
         self.lsize = lsize
         self.blocksize, self.switchthreshold = None, None
         if blocksize is not None:
-            self.blocksize = blocksize*(1024**2)
+            self.blocksize = blocksize*(1024**1)
         if switchthreshold is not None:
             self.switchthreshold = switchthreshold*(1024**1)
         self.callback = None
@@ -211,8 +211,10 @@ class Window:
             text=f"Encrypting files... ({percent}%)\n{progress} of {target} blocks complete.\nTime Elapsed: {delapsed}s\nETA: {dtme}"
         elif status == elib.VaultModes.EXTRACTING:
             text=f"Extracting files... ({percent}%)\n{progress} of {target} items processed.\nTime Elapsed: {delapsed}s\nETA: {dtme}"
+        elif status == elib.VaultModes.CLEANING:
+            text=f"Cleaning excess blocks... ({percent}%)\n{progress} of {target} items processed.\nTime Elapsed: {delapsed}s\nETA: {dtme}"
         else:
-            text=f"Error. State:{status}"
+            text=f"Unknown state. State:{status}"
         self.frame.config(text=f"{text}\n\n{stat}")
 
     def openVault(self):
@@ -353,8 +355,8 @@ class OpenFrame(tkinter.Frame):
 
         advancedoptions = tkinter.Label(self,text='''\nADVANCED OPTIONS BELOW. BE CAREFUL.
 "Click 'Apply' to apply these options, clicking 'New Vault' or 'Open' will not save them.''')
-        alab1 = tkinter.Label(self,text="Block size (MiB): ")
-        ades1 = tkinter.Label(self,text="Lower values are generally better. Recommended: 1. [Int]")
+        alab1 = tkinter.Label(self,text="Block size (KiB): ")
+        ades1 = tkinter.Label(self,text="Lower values are generally better, however there is a limit. [Int]")
         alab2 = tkinter.Label(self,text="Switch Threshold (KiB): ")
         ades2 = tkinter.Label(self,text="Set this to the value returned by devtools.get_lvs3_threshold_KiB(). [Int]")
         aent1 = tkinter.Entry(self,width=50)
