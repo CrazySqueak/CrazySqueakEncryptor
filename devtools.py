@@ -1,3 +1,7 @@
+# These are a set of developer tools for working out various variables in the Encryptor program.
+# This may be freely modified, and is exempt from the terms set out in LICENSING.md
+# None of the authors accept responsibility for any problems caused by use of this program.
+
 import encryptionlib as elib
 import time
 

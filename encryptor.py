@@ -1,8 +1,12 @@
-# Original Code Copyright CrazySqueak <crazysqueak.wordpress.com>, 2019
+# Original Code Copyright CrazySqueak, 2019. Get the original at: <https://github.com/CrazySqueak/CrazySqueakEncryptor>
 # DISCLAIMER: The above authors do not guarantee that your data will be secure using this program.
 # Use this at your own risk.
-# This program is shareware, as long as you leave the comments above this intact. If you make modifications to the code,
-# you may add your own comment above the disclaimer.
+# This program is shareware as long as you obey the licensing terms set out in LICENSING.md.
+# If you make modifications to the code, you may add your own comment above the disclaimer, as set out in section 6.1.
+#
+# DISCLAIMER: None of the authors (including CrazySqueak), do not accept any liability or responsibility for any data
+# loss, or other problems, caused by improper operation of the program, or by failure of the program. You use it at your
+# own risk.
 
 import tkinter,os,random,sys,pickle,threading,time
 from enum import Enum
