@@ -17,7 +17,7 @@ def loadSettings():
         settings["blocksize"]
         settings["switchthreshold"]
     except:
-        settings = {"defaultroot": "~","blocksize":4,"switchthreshold":1024}
+        settings = {"defaultroot": "~","blocksize":1,"switchthreshold":1024}
     return settings
 def saveSettings(settings):
     with open("settings","wb") as f:
@@ -111,15 +111,15 @@ class Window:
         self.frame.pack()
 
     def ResetFrame(self):
+        self.pleasewait = False
         self.frame.destroy()
         self.frame = CurrentlyOpenFrame(self.window)
         self.frame.pack()
-        self.pleasewait = False
     def ResetOpenFrame(self):
+        self.pleasewait = False
         self.frame.destroy()
         self.frame = OpenFrame(self.window)
         self.frame.pack()
-        self.pleasewait = False
     def ResetPleaseWait(self):
         self.frame.destroy()
         self.frame = tkinter.Label(self.window, text="Please wait...")
@@ -128,12 +128,13 @@ class Window:
         self.pleasewait = True
         self.window.after(100,self.pleasewaitupdater)
     def ErrorCallback(self,err):
-        if err[0] == elib.IntegrityError:
+        try:
+            raise err[1]
+        except elib.IntegrityError:
             mb.showerror("Error", "Vault is corrupt. Please check the console for more details.")
             print(err[0], err[1])
+        finally:
             self.ResetOpenFrame()
-        else:
-            raise err[1]
 
     def pleasewaitupdater(self):
         if not self.pleasewait:
@@ -142,6 +143,7 @@ class Window:
             self.window.after(100,self.pleasewaitupdater)
 
         status = self.thread.vault.state
+        stat = self.thread.vault.statusmessage
         target = self.thread.vault.target
         progress = self.thread.vault.progress
         if status != self.oldstate:
@@ -191,19 +193,23 @@ class Window:
         else:
             dtme = "Longer than it takes to compute the answer to the ultimate question of life, the universe, and everything."
         if status == elib.VaultModes.DOINGNOTHING:
-            self.frame.config(text=f"Please wait...\nTime Elapsed: {delapsed}s")
+            text=f"Please wait...\nTime Elapsed: {delapsed}s"
+            stat = ""
         elif status == elib.VaultModes.WIPINGFILES:
-            self.frame.config(text=f"Wiping (part 1 of 2)...\nTime Elapsed: {delapsed}s")
+            text=f"Wiping (part 1 of 2)...\nTime Elapsed: {delapsed}s"
         elif status == elib.VaultModes.WIPINGDIRS:
-            self.frame.config(text=f"Wiping (part 2 of 2)...\nTime Elapsed: {delapsed}s")
+            text=f"Wiping (part 2 of 2)...\nTime Elapsed: {delapsed}s"
         elif status == elib.VaultModes.ESTIMATING:
-            self.frame.config(text=f"Estimating block amount...\nTime Elapsed: {delapsed}s")
+            text=f"Estimating block amount...\nTime Elapsed: {delapsed}s"
         elif status == elib.VaultModes.CHECKING:
-            self.frame.config(text=f"Checking integrity... ({percent}%)\n{progress} of {target} checks completed.\nTime Elapsed: {delapsed}s\nETA: {dtme}")
+            text=f"Checking integrity... ({percent}%)\n{progress} of {target} checks completed.\nTime Elapsed: {delapsed}s\nETA: {dtme}"
         elif status == elib.VaultModes.STORING:
-            self.frame.config(text=f"Encrypting files... ({percent}%)\n{progress} of {target} blocks complete.\nTime Elapsed: {delapsed}s\nETA: {dtme}")
+            text=f"Encrypting files... ({percent}%)\n{progress} of {target} blocks complete.\nTime Elapsed: {delapsed}s\nETA: {dtme}"
         elif status == elib.VaultModes.EXTRACTING:
-            self.frame.config(text=f"Extracting files... ({percent}%)\n{progress} of {target} blocks processed.\nTime Elapsed: {delapsed}s\nETA: {dtme}")
+            text=f"Extracting files... ({percent}%)\n{progress} of {target} items processed.\nTime Elapsed: {delapsed}s\nETA: {dtme}"
+        else:
+            text=f"Error. State:{status}"
+        self.frame.config(text=f"{text}\n\n{stat}")
 
     def openVault(self):
         v = self.frame.ent1.get()
@@ -344,8 +350,7 @@ class OpenFrame(tkinter.Frame):
         advancedoptions = tkinter.Label(self,text='''\nADVANCED OPTIONS BELOW. BE CAREFUL.
 "Click 'Apply' to apply these options, clicking 'New Vault' or 'Open' will not save them.''')
         alab1 = tkinter.Label(self,text="Block size (MiB): ")
-        ades1 = tkinter.Label(self,
-            text="Higher values equal larger blocks, lower values equal less memory usage and faster encryption.[Int]")
+        ades1 = tkinter.Label(self,text="Lower values are generally better. Recommended: 1. [Int]")
         alab2 = tkinter.Label(self,text="Switch Threshold (KiB): ")
         ades2 = tkinter.Label(self,text="Set this to the value returned by devtools.get_lvs3_threshold_KiB(). [Int]")
         aent1 = tkinter.Entry(self,width=50)

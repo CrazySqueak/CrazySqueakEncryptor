@@ -40,3 +40,25 @@ def get_1vs3_threshold():
 
 def get_lvs3_threshold_KiB():
     return get_1vs3_threshold()[0]//1024
+
+def block_size_vs_speed_investigation(lsize):
+    print("Init...")
+    points = {}
+    ec = elib.Encryptor(lsize)
+    MiB = 8
+    smalldata = b"x"*(1024**2)
+    data = smalldata*MiB
+    print("1MiB*{}".format(MiB))
+    s = time.time()
+    for i in range(MiB):
+        ec.encryptString(smalldata,"KEY")
+    e = time.time()
+    points[1] = e-s
+    print(f"Time: {round(e-s,2)}s")
+    print("{}MiB".format(MiB))
+    s = time.time()
+    ec.encryptString(data, "KEY")
+    e = time.time()
+    points[MiB] = e-s
+    print(f"Time: {round(e - s, 2)}s")
+    return points

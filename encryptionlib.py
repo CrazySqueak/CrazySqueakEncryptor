@@ -177,6 +177,7 @@ class Vault():
         self.sp_bp = os.path.join(spath,"blocks") #Block folder
         self.ep = epath #Export path
         self.state = VaultModes.DOINGNOTHING
+        self.statusmessage = "This variable will contain the last thing the vault was doing, or is currently doing."
         self.progress = 0
         self.target = 0
         if not os.path.exists(spath):
@@ -213,6 +214,7 @@ class Vault():
                     total += tby//self.BLOCKSIZE
                     if (tby%self.BLOCKSIZE) > 0:
                         total += 1
+                    self.statusmessage = "Estimated: {} blocks".format(total)
         print("Estimated size: {} blocks".format(total))
         print("Encrypting...")
         self.state = VaultModes.STORING
@@ -220,6 +222,7 @@ class Vault():
         self.target = total
         for root,dirs,files in os.walk(self.ep):
             for d in dirs:
+                self.statusmessage = d
                 #print("Directory: {}".format(d))
                 dp = os.path.join(root,d)
                 rdp = self.getRelativePath(dp,self.ep)
@@ -227,6 +230,7 @@ class Vault():
                 mdata["dirs"].append(rdp)
             for fn in files:
                 #print("File: {}".format(fn))
+                self.statusmessage = fn
                 fp = os.path.join(root,fn)
                 orfp = self.getRelativePath(fp,self.ep)
                 rfp = self.e.encryptString(orfp.encode("utf-8"),key)
@@ -283,17 +287,16 @@ class Vault():
         print("Creating directories...")
         for d in mdata["dirs"]:
             d = self.e.decryptString(d.encode("utf-8"),key).decode("utf-8")
+            self.statusmessage = d
             #print("Directory: {}".format(d))
             if not os.path.exists(os.path.join(self.ep, d)):
                 os.mkdir(os.path.join(self.ep, d))
-            else:
-                print("Exists.")
             self.progress += 1
         print("Extracting files...")
         for f in mdata["files"].keys():
-            f = f
             df = self.e.decryptString(f.encode("utf-8"),key).decode("utf-8")
             #print("File: {}".format(df))
+            self.statusmessage = df
             open(os.path.join(self.ep,df),"wb").close()
             blks = mdata["files"][f]
             for bn in blks:
@@ -317,14 +320,17 @@ class Vault():
         for root,dirs,files in os.walk(self.ep, topdown=False):
             for f in files:
                 #print(f)
+                self.statusmessage = f
                 self.fe.wipeFile(os.path.join(root,f))
         self.state = VaultModes.WIPINGDIRS
         for root,dirs,files in os.walk(self.ep, topdown=False):
             for d in dirs:
                 #print(d)
+                self.statusmessage = d
                 os.rmdir(os.path.join(root,d))
             for f in files:
                 #print(f)
+                self.statusmessage = f
                 self.fe.wipeFile(os.path.join(root,f))
         self.state = VaultModes.DOINGNOTHING
     def checkIntegrity(self):
@@ -339,6 +345,7 @@ class Vault():
             raise BlockAmountMismatch("INCORRECT AMOUNT OF BLOCKS. {} instead of {}.".format(len(glob.glob(os.path.join(self.sp_bp,"*"))),mdata["totalblocks"]))
         self.progress += 1
         for bn in range(mdata["totalblocks"]):
+            self.statusmessage = "Block {}".format(bn)
             if not os.path.exists(os.path.join(self.sp_bp,"block{}".format(bn))):
                 print("BLOCK {} DOES NOT EXIST.".format(bn))
                 raise MissingBlockError("BLOCK {} DOES NOT EXIST.".format(bn))
@@ -356,6 +363,7 @@ class Vault():
             self.progress += 1
         print("Checking files...")
         for f in mdata["files"].keys():
+            self.statusmessage = f
             print("Checking file {}...".format(f))
             for bn in mdata["files"][f]:
                 if bn >= mdata["totalblocks"]:
