@@ -266,6 +266,9 @@ class Window:
         if len(self.k) < 1:
             mb.showerror("Error", 'Key must be at least 1 character long. Change it using "Change key"')
             return
+        if not self.frame.ent1.get() == self.k:
+            mb.showerror("Error", "Please enter the current encryption key to close your vault.")
+            return
 
         self.ResetPleaseWait()
 
@@ -304,7 +307,13 @@ class Window:
         self.frame = ChangeKeyFrame(self.window)
         self.frame.pack()
     def changeKeyCallback(self):
-        self.k = self.frame.ent1.get()
+        k = self.frame.ent1.get()
+        k2 = self.frame.ent2.get()
+        if not k == k2:
+            mb.showerror("Change Key","Keys do not match.")
+            return
+        else:
+            self.k = k
         self.frame.destroy()
         self.frame = CurrentlyOpenFrame(self.window)
         self.frame.pack()
@@ -326,12 +335,18 @@ class ChangeKeyFrame(tkinter.Frame):
         tkinter.Frame.__init__(self,parent)
 
         lab1 = tkinter.Label(self,text="New Key:")
-        ent1 = tkinter.Label(self,width=50)
+        lab2 = tkinter.Label(self,text="Confirm Key:")
+        ent1 = tkinter.Entry(self,width=50,show="*")
+        ent2 = tkinter.Entry(self,width=50,show="*")
         but1 = tkinter.Button(self,text="Change",command=win.changeKeyCallback)
 
         lab1.grid(column=1,row=1)
         ent1.grid(column=2,row=1)
-        but1.grid(column=1,row=2,columnspan=2)
+        lab2.grid(column=1,row=2)
+        ent2.grid(column=2,row=2)
+        but1.grid(column=1,row=3,columnspan=2)
+
+        self.ent1, self.ent2 = ent1,ent2
 
 class CurrentlyOpenFrame(tkinter.Frame):
     def __init__(self, parent):
@@ -341,11 +356,17 @@ class CurrentlyOpenFrame(tkinter.Frame):
         but1 = tkinter.Button(self,text="Change key",command=win.changeKey)
         but2 = tkinter.Button(self,text="Close Vault",command=win.closeVault)
         but3 = tkinter.Button(self,text="Open Folder",command=win.openVaultFolder)
+        lab2 = tkinter.Label(self,text="Enter Key:")
+        ent1 = tkinter.Entry(self,width=25,show="*")
 
         lab1.grid(column=1,row=1,columnspan=2)
         but1.grid(column=1,row=2)
         but2.grid(column=2,row=2)
         but3.grid(column=3,row=1)
+        lab2.grid(column=1,row=3)
+        ent1.grid(column=2,row=3,columnspan=2)
+
+        self.ent1 = ent1
 
 
 class OpenFrame(tkinter.Frame):
@@ -357,7 +378,7 @@ class OpenFrame(tkinter.Frame):
         lab3 = tkinter.Label(self,text="Encryption Key: ")
         ent1 = tkinter.Entry(self,width=50)
         ent2 = tkinter.Entry(self,width=50)
-        ent3 = tkinter.Entry(self,width=50)
+        ent3 = tkinter.Entry(self,width=50,show="*")
         but1 = tkinter.Button(self,text="Browse...",command=self.browse1)
         but2 = tkinter.Button(self,text="Browse...",command=self.browse2)
         butS = tkinter.Button(self,text="Open",command=win.openVault)

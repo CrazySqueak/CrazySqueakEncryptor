@@ -24,7 +24,7 @@ Despite the insecurity of the program, there are still some additional security 
  6. Wait patiently while it encrypts your files for the first time. The window should change to "Please wait...", followed by "Estimating block amount...", before displaying "Encrypting files..." alongside some information on progress, and a wait time estimate.  
  7. Get yourself something to do if you have a lot of files, or some very large ones. The Earth is probably due to be destroyed to make a hyperspace byway at some time before the encryption will finish. As I said, this isn't designed to be practical.  
  8. Once the encryption is complete, a new window will appear. Use "Open Folder" to open the folder containing your decrypted files, "Change Key" to change the encryption key, or "Close Vault", to close the vault.  
- 9. **Do not close the window if you want to properly close the vault. Closing the window will not re-encrypt the files back into the vault, and wipe the decrypted files.** Instead, use the "Close Vault" option.  
+ 9. **Do not close the window if you want to properly close the vault. Closing the window will not re-encrypt the files back into the vault, and wipe the decrypted files.** Instead, enter your key into the required box and use the "Close Vault" option.  
  10. Contemplate whether the encryption will be finished before the heat death of the universe.  
  11. Once the encryption is complete, the decrypted files will be overwritten and deleted, safely removing them with no hope of recovery (unless the drive they were on was an SSD, due to wear-levelling algorithms) without the vault and encryption key.  
   
