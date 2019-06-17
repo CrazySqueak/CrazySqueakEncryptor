@@ -301,7 +301,7 @@ class Window:
 
     def changeKey(self):
         self.frame.destroy()
-        self.frame = ChangeKeyFrame()
+        self.frame = ChangeKeyFrame(self.window)
         self.frame.pack()
     def changeKeyCallback(self):
         self.k = self.frame.ent1.get()
@@ -313,6 +313,7 @@ class Window:
         try:
             os.startfile(path)
         except:
+            print(sys.exc_info()[0:2])
             os.system("xdg-open '{}'".format(path))
 
     def mainloop(self):
