@@ -206,25 +206,25 @@ class Window:
         else:
             dtme = "Longer than it takes to compute the answer to the ultimate question of life, the universe, and everything."
         if status == elib.VaultModes.DOINGNOTHING:
-            text=f"Please wait...\nTime Elapsed: {delapsed}s"
+            text="Please wait...\nTime Elapsed: {}s".format(delapsed)
             stat = ""
         elif status == elib.VaultModes.WIPINGFILES:
-            text=f"Wiping (part 1 of 2)...\nTime Elapsed: {delapsed}s"
+            text="Wiping (part 1 of 2)...\nTime Elapsed: {}s".format(delapsed)
         elif status == elib.VaultModes.WIPINGDIRS:
-            text=f"Wiping (part 2 of 2)...\nTime Elapsed: {delapsed}s"
+            text="Wiping (part 2 of 2)...\nTime Elapsed: {}s".format(delapsed)
         elif status == elib.VaultModes.ESTIMATING:
-            text=f"Estimating block amount...\nTime Elapsed: {delapsed}s"
+            text="Estimating block amount...\nTime Elapsed: {}s".format(delapsed)
         elif status == elib.VaultModes.CHECKING:
-            text=f"Checking integrity... ({percent}%)\n{progress} of {target} checks completed.\nTime Elapsed: {delapsed}s\nETA: {dtme}"
+            text="Checking integrity... ({}%)\n{} of {} checks completed.\nTime Elapsed: {}s\nETA: {}".format(percent,progress,target,delapsed,dtme)
         elif status == elib.VaultModes.STORING:
-            text=f"Encrypting files... ({percent}%)\n{progress} of {target} blocks complete.\nTime Elapsed: {delapsed}s\nETA: {dtme}"
+            text="Encrypting files... ({}%)\n{} of {} blocks complete.\nTime Elapsed: {}s\nETA: {}".format(percent,progress,target,delapsed,dtme)
         elif status == elib.VaultModes.EXTRACTING:
-            text=f"Extracting files... ({percent}%)\n{progress} of {target} items processed.\nTime Elapsed: {delapsed}s\nETA: {dtme}"
+            text="Extracting files... ({}%)\n{} of {} items processed.\nTime Elapsed: {}s\nETA: {}".format(percent,progress,target,delapsed,dtme)
         elif status == elib.VaultModes.CLEANING:
-            text=f"Cleaning excess blocks... ({percent}%)\n{progress} of {target} items processed.\nTime Elapsed: {delapsed}s\nETA: {dtme}"
+            text="Cleaning excess blocks... ({}%)\n{} of {} items processed.\nTime Elapsed: {}s\nETA: {}".format(percent,progress,target,delapsed,dtme)
         else:
-            text=f"Unknown state. State:{status}"
-        self.frame.config(text=f"{text}\n\n{stat}")
+            text="Unknown state. State:{}".format(status)
+        self.frame.config(text="{}\n\n{}".format(text,stat))
 
     def openVault(self):
         v = self.frame.ent1.get()
@@ -426,7 +426,7 @@ try:
 except Exception:
     if win.uncaughtfault:
         mb.showerror("Fatal Error","An uncaught exception has occurred somewhere in the UI handling code.")
-    print(f"ERROR: {sys.exc_info()}")
+    print("ERROR: {}".format(sys.exc_info()))
     raise
 else:
     os.kill(os.getpid(), signal.SIGTERM)

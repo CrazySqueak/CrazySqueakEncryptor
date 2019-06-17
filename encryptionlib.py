@@ -155,7 +155,7 @@ class FileEncryptor():
             except PermissionError:
                 errcount += 1
                 if errcount == 3:
-                    print(f"File not wiped due to permission error: {file}")
+                    print("File not wiped due to permission error: {}".format(file))
                     write = False
         #Remove file from disk
         errcount = 0
@@ -343,7 +343,7 @@ class Vault():
                 except PermissionError:
                     errcount += 1
                     if errcount == 3:
-                        print(f"Ignored due to permission errors: {d}")
+                        print("Ignored due to permission errors: {}".format(d))
                         break
             self.progress += 1
         print("Extracting files...")
@@ -360,7 +360,7 @@ class Vault():
                 except PermissionError:
                     errcount += 1
                     if errcount == 3:
-                        print(f"Ignored due to permission errors: {df}")
+                        print("Ignored due to permission errors: {}".format(df))
                         write = False
             blks = mdata["files"][f]
             for bn in blks:
@@ -474,7 +474,7 @@ def dV():
 def dVe():
     return Vault("N:/store","N:/backup2")
 
-def benchmark_esize(file="D:/Personal/About Me.pptx",sizes=[1,2,3],key="ASDF"):
+def benchmark_esize(file="D:/Personal/About Me.pptx",sizes=[1,2,3],key="KEY"):
     print("Loading data...")
     with open(file,"rb") as f:
         data = f.read()
@@ -489,7 +489,7 @@ def benchmark_esize(file="D:/Personal/About Me.pptx",sizes=[1,2,3],key="ASDF"):
         etime = time.time()
         print("Encrypted. Time: {}s".format(round(etime-stime,2)))
 
-def benchmark_esize_amnt(meg=1,sizes=[1,2,3],key="ASDF"):
+def benchmark_esize_amnt(meg=1,sizes=[1,2,3],key="KEY"):
     print("Generating data...")
     data = b"0"*((1024**2)*meg)
     encryptors = {}
@@ -503,7 +503,7 @@ def benchmark_esize_amnt(meg=1,sizes=[1,2,3],key="ASDF"):
         etime = time.time()
         print("Encrypted. Time: {}s".format(round(etime-stime,2)))
 
-def benchmark_vsize(file="D:/Personal/About Me.pptx",sizes=[1,2,3],key="ASDF"):
+def benchmark_vsize(file="D:/Personal/About Me.pptx",sizes=[1,2,3],key="KEY"):
     encryptors = {}
     print("Generating vaults...")
     for s in sizes:
