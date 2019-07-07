@@ -298,9 +298,7 @@ class Window:
         self.k = k
         self.thread = EncryptionThread(v,e,k,ThreadedEncryptionModes.BACKUP,lsize=DEFAULTLETTERSIZE,
                                        blocksize=settings["blocksize"],switchthreshold=settings["switchthreshold"])
-        self.thread.setCallback(self.ResetFrame)
-        self.thread.setErrorCallback(self.ErrorCallback)
-        self.thread.start()
+        self.ResetFrame()
 
     def changeKey(self):
         self.frame.destroy()
