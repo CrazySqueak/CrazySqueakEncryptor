@@ -227,8 +227,8 @@ class Window:
         self.frame.config(text="{}\n\n{}".format(text,stat))
 
     def openVault(self):
-        v = self.frame.ent1.get()
-        e = self.frame.ent2.get()
+        v = os.path.expanduser(self.frame.ent1.get())
+        e = os.path.expanduser(self.frame.ent2.get())
         k = self.frame.ent3.get()
         self.k = k
         if not os.path.exists(os.path.join(v,"MANIFEST")):
@@ -286,8 +286,8 @@ class Window:
         self.frame = OpenFrame(self.window)
         self.frame.pack()'''
     def newVault(self):
-        v = self.frame.ent1.get()
-        e = self.frame.ent2.get()
+        v = os.path.expanduser(self.frame.ent1.get())
+        e = os.path.expanduser(self.frame.ent2.get())
         k = self.frame.ent3.get()
         if len(k) < 1:
             mb.showerror("Error", 'Key must be at least 1 character long. Change it and try again.')
